@@ -6,11 +6,14 @@ import "strings"
 import irc "github.com/fluffle/goirc/client"
 import "github.com/fluffle/golog/logging"
 
-var bot_nick string = "replacebot"
-var bot_server string = "art1.mae.ncsu.edu:6667"
-var bot_channel string = "#arc"
-//var bot_server string = "chat.freenode.net:6667"
-//var bot_channel string = "#ncsulug"
+const (
+    BOT_NICK = "replacebot"
+    //BOT_SERVER = "art1.mae.ncsu.edu:6667"
+    //BOT_CHANNEL = "#arc"
+    BOT_SERVER = "chat.freenode.net:6667"
+    BOT_CHANNEL = "#ncsulug"
+    BOT_SOURCE = "https://github.com/prattmic/replacebot"
+)
 
 var last_message map[string]string
 
@@ -18,10 +21,10 @@ func main() {
     last_message = make(map[string]string)
 
     // Create a config and fiddle with it first:
-    cfg := irc.NewConfig(bot_nick)
+    cfg := irc.NewConfig(BOT_NICK)
 
     //cfg.SSL = true
-    cfg.Server = bot_server
+    cfg.Server = BOT_SERVER
 
     cfg.NewNick = func(n string) string { return n + "^" }
     c := irc.Client(cfg)
@@ -31,7 +34,7 @@ func main() {
     c.HandleFunc("connected",
         func(conn *irc.Conn, line *irc.Line) {
             logging.Info("Connected to %s as %s", cfg.Server, cfg.Me.Nick);
-            conn.Join(bot_channel)
+            conn.Join(BOT_CHANNEL)
         })
 
     // And a signal on disconnect
@@ -42,6 +45,7 @@ func main() {
             quit <- true
         })
 
+    // Watch for messages
     c.HandleFunc("PRIVMSG", privmsg)
 
     // Tell client to connect.
@@ -54,6 +58,9 @@ func main() {
     <-quit
 }
 
+/* Watch for messages.
+ * Keep track of last thing every user said, and if they perform a replacement,
+ * do the replacement for them and respond */
 func privmsg(conn *irc.Conn, line *irc.Line) {
     channel := line.Args[0]
     message := strings.Join(line.Args[1:], "")
@@ -61,7 +68,7 @@ func privmsg(conn *irc.Conn, line *irc.Line) {
     logging.Info("%s to %s: %s", line.Nick, channel, message);
 
     /* Yay! Regex!
-     * Regex for matching vim-style replacement lines.
+     * Regex for matching {vim,perl,sed}-style replacement lines.
      * Input is of the form "s/regex[/replacement[/flags]]"
      * Where replacement, flags, and their assosciated slashes are optional
      * The input allows escaped slashes (\/) in the regex or replacement
@@ -125,16 +132,18 @@ func privmsg(conn *irc.Conn, line *irc.Line) {
             replacement_regex = fmt.Sprintf("(?i)%s", replacement_regex)
         }
 
-        // Global
+        // Global replacement
         if strings.Contains(flags, "g") {
             global = true
         }
 
+        // User's last message
         m, ok := last_message[line.Nick]
         if !ok {
             return
         }
 
+        // Apply their regex
         regex, err := regexp.Compile(replacement_regex)
         if err != nil {
             conn.Privmsg(channel, fmt.Sprintf("%s: error compiling regex: %s", line.Nick, err))
@@ -146,6 +155,7 @@ func privmsg(conn *irc.Conn, line *irc.Line) {
             if global {
                 return repl
             } else if i < 1 {
+                // non-global replacement only done once
                 i = i + 1
                 return repl
             }
@@ -153,10 +163,18 @@ func privmsg(conn *irc.Conn, line *irc.Line) {
             return s
         })
 
+        // Send out replaced message
         conn.Privmsg(channel, fmt.Sprintf("<%s>: %s", line.Nick, fixed))
 
+        // Consider this corrected message the user's last message
         last_message[line.Nick] = fixed
     } else {
+        // Not a replacement, just remember this message
         last_message[line.Nick] = message
+
+        // Send source link
+        if strings.EqualFold(message, BOT_NICK + ": source") {
+            conn.Privmsg(channel, fmt.Sprintf("%s: " + BOT_SOURCE, line.Nick))
+        }
     }
 }
