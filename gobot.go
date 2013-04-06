@@ -117,6 +117,10 @@ func privmsg(conn *irc.Conn, line *irc.Line) {
             return
         } 
 
+        // Replace escaped slashes with real ones
+        replacement_regex = strings.Replace(replacement_regex, "\\/", "/", -1)
+        repl = strings.Replace(repl, "\\/", "/", -1)
+
         // Ignore case
         if strings.Contains(flags, "i") {
             replacement_regex = fmt.Sprintf("(?i)%s", replacement_regex)
