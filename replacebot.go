@@ -175,6 +175,10 @@ func privmsg(conn *irc.Conn, line *irc.Line) {
         // Send source link
         if strings.EqualFold(message, BOT_NICK + ": source") {
             conn.Privmsg(channel, fmt.Sprintf("%s: " + BOT_SOURCE, line.Nick))
+        } else if strings.EqualFold(message, BOT_NICK + ": help") {
+            conn.Privmsg(channel, fmt.Sprintf("%s: I will search and replace your last message when you " +
+                "use the format s/regex/replacement/flags (don't direct at me). " +
+                "Flags are i (ignore case) and g (global replacement).  See source for more details.", line.Nick))
         }
     }
 }
