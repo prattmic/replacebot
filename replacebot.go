@@ -6,11 +6,10 @@ import "strings"
 import irc "github.com/fluffle/goirc/client"
 import "github.com/fluffle/golog/logging"
 
-var bot_nick string = "gobot"
+var bot_nick string = "replacebot"
 var bot_server string = "art1.mae.ncsu.edu:6667"
 var bot_channel string = "#arc"
-//var bot_nick string = "prattmic_gobot"
-//var bot_server string = "rajaniemi.freenode.net:6667"
+//var bot_server string = "chat.freenode.net:6667"
 //var bot_channel string = "#ncsulug"
 
 var last_message map[string]string
