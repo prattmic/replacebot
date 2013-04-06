@@ -72,7 +72,12 @@ func privmsg(conn *irc.Conn, line *irc.Line) {
         logging.Warn("Regexp error: %s", err)
     }
 
-    logging.Info("%v", match)
+    if match != nil {
+        logging.Info("Complete match: \"%s\"", match[0])
+        logging.Info("Matched regex: \"%s\"", match[1])
+        logging.Info("Matched replacement: \"%s\"", match[2])
+        logging.Info("Matched flags: \"%s\"", match[3])
+    }
 
     if match != nil {
         replacement_regex := match[1]
