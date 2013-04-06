@@ -61,8 +61,35 @@ func privmsg(conn *irc.Conn, line *irc.Line) {
 
     logging.Info("%s to %s: %s", line.Nick, channel, message);
 
-    // s/([^/]+)/([^/]+)(?:/([ig])*)*
-    reg, err := regexp.Compile("s/(.+)/(.*)(?:/([ig])*)*")
+    /* Yay! Regex!
+     * Regex for matching vim-style replacement lines.
+     * Input is of the form "s/regex[/replacement[/flags]]"
+     * Where replacement, flags, and their assosciated slashes are optional
+     * The input allows escaped slashes (\/) in the regex or replacement
+     * When used with FindSubmatch, match[1] = regex, match[2] = replacement, match[3] = flags
+     * As a single line: "s/((?:\\\\/|[^/])+)(?:/((?:\\\\/|[^/])*)(?:/((?:[ig])*))?)?" */
+    reg, err := regexp.Compile("s/" +   // Beginning of search command
+                                "(" +   // Start search regex group (1)
+                                    "(?:\\\\/|[^/])+" + // One or more (you have to provide something to search for!) non-slashes (/), unless slash is escaped (\/)
+                                                        // 4 backslashes are required to match one backslash, as it is an escape character for Go and for the regexp engine
+                                                        // The engine will only match a literal \ if you escape it, thus \\. but to create a literal \ in Go, you also must
+                                                        // escape that
+                                ")" +   // End search regex group (1)
+                                "(?:" + // Start non-capturing group for the remainder of the string
+                                        // This group is optional (note the ? at the very end of the expression), meaning "s/blah" is valid, replacing blah with nothing
+                                    "/" +   // Match / separating search and replacement
+                                    "(" +   // Start replacement group (2)
+                                        "(?:\\\\/|[^/])*" + // Zero or more (can replace with nothing) non-slashes (/), unless slash is escaped (\/)
+                                    ")" +   // End replacement group (2)
+                                    "(?:" + // Start non-capturing group for the remainder of the string (/flags)
+                                            // This group is optional (note the ? at the end of this section, meaning "s/blah/bleh" is valid, replacing blah with bleh
+                                        "/" +   // Match / separating replacement and flags
+                                        "(" +   // Start flags group (3)
+                                            "[ig]*" +   // Zero or more i (ignore case) or g (global replace) flags
+                                        ")" +   // End flags group (3)
+                                    ")?" +  // End optional group for (/flags)
+                                ")?") // End optional group for (/replacement/flags)
+
     if err != nil {
         logging.Warn("Regexp compile error: %s", err)
     }
