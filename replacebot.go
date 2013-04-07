@@ -74,7 +74,7 @@ func privmsg(conn *irc.Conn, line *irc.Line) {
      * The input allows escaped slashes (\/) in the regex or replacement
      * When used with FindSubmatch, match[1] = regex, match[2] = replacement, match[3] = flags
      * As a single line: "s/((?:\\\\/|[^/])+)(?:/((?:\\\\/|[^/])*)(?:/((?:[ig])*))?)?" */
-    reg, err := regexp.Compile("s/" +   // Beginning of search command
+    reg, err := regexp.Compile("^s/" +  // Beginning of search command
                                 "(" +   // Start search regex group (1)
                                     "(?:\\\\/|[^/])+" + // One or more (you have to provide something to search for!) non-slashes (/), unless slash is escaped (\/)
                                                         // 4 backslashes are required to match one backslash, as it is an escape character for Go and for the regexp engine
