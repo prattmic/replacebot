@@ -163,6 +163,14 @@ func privmsg(conn *irc.Conn, line *irc.Line) {
             return s
         })
 
+        /* Limit result to one message 
+         * My limited testing indicates that 438 (?)
+         * characters is the maximum */
+        if len(fixed) > 438 {
+            b := []byte(fixed)
+            fixed = string(b[0:438])
+        }
+
         // Send out replaced message
         conn.Privmsg(channel, fmt.Sprintf("<%s>: %s", line.Nick, fixed))
 
