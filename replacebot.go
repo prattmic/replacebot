@@ -163,7 +163,7 @@ func privmsg(conn *irc.Conn, line *irc.Line) {
             return s
         })
 
-        /* Limit result to one message 
+        /* Limit result to one message
          * My limited testing indicates that 438 (?)
          * characters is the maximum */
         if len(fixed) > 438 {
