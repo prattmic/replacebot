@@ -69,30 +69,35 @@ func privmsg(conn *irc.Conn, line *irc.Line) {
 
     /* Yay! Regex!
      * Regex for matching {vim,perl,sed}-style replacement lines.
-     * Input is of the form "s/regex[/replacement[/flags]]"
-     * Where replacement, flags, and their assosciated slashes are optional
+     * Input is of the form "user: s/regex[/replacement[/flags]]"
+     * Where user, replacement, flags, and their assosciated slashes are optional
      * The input allows escaped slashes (\/) in the regex or replacement
-     * When used with FindSubmatch, match[1] = regex, match[2] = replacement, match[3] = flags
-     * As a single line: "s/((?:\\\\/|[^/])+)(?:/((?:\\\\/|[^/])*)(?:/((?:[ig])*))?)?" */
-    reg, err := regexp.Compile("^s/" +  // Beginning of search command
-                                "(" +   // Start search regex group (1)
+     * When used with FindSubmatch, match[1] = user, match[2] = regex, match[3] = replacement, match[4] = flags
+     * As a single line: "^(?:(.+?)[:, ]\\s*)?s/((?:\\\\/|[^/])+)(?:/((?:\\\\/|[^/])*)(?:/((?:[ig])*))?)?" */
+    reg, err := regexp.Compile("^" + // Start at the beginning of the line
+                                "(?:" + // Start optional non-matching group for user prefix
+                                    "(.+?)" + // Match arbitrary username, group (1) (non-greedy to avoid including delimiting character
+                                    "[:, ]\\s*" + // Match user delimiting character and space before regex
+                                ")?" + // End optional non-matching group (1) for user prefix
+                                "s/" +  // Beginning of search command
+                                "(" +   // Start search regex group (2)
                                     "(?:\\\\/|[^/])+" + // One or more (you have to provide something to search for!) non-slashes (/), unless slash is escaped (\/)
                                                         // 4 backslashes are required to match one backslash, as it is an escape character for Go and for the regexp engine
                                                         // The engine will only match a literal \ if you escape it, thus \\. but to create a literal \ in Go, you also must
                                                         // escape that
-                                ")" +   // End search regex group (1)
+                                ")" +   // End search regex group (2)
                                 "(?:" + // Start non-capturing group for the remainder of the string
                                         // This group is optional (note the ? at the very end of the expression), meaning "s/blah" is valid, replacing blah with nothing
                                     "/" +   // Match / separating search and replacement
-                                    "(" +   // Start replacement group (2)
+                                    "(" +   // Start replacement group (3)
                                         "(?:\\\\/|[^/])*" + // Zero or more (can replace with nothing) non-slashes (/), unless slash is escaped (\/)
-                                    ")" +   // End replacement group (2)
+                                    ")" +   // End replacement group (3)
                                     "(?:" + // Start non-capturing group for the remainder of the string (/flags)
                                             // This group is optional (note the ? at the end of this section, meaning "s/blah/bleh" is valid, replacing blah with bleh
                                         "/" +   // Match / separating replacement and flags
-                                        "(" +   // Start flags group (3)
+                                        "(" +   // Start flags group (4)
                                             "[ig]*" +   // Zero or more i (ignore case) or g (global replace) flags
-                                        ")" +   // End flags group (3)
+                                        ")" +   // End flags group (4)
                                     ")?" +  // End optional group for (/flags)
                                 ")?") // End optional group for (/replacement/flags)
 
@@ -107,21 +112,28 @@ func privmsg(conn *irc.Conn, line *irc.Line) {
 
     if match != nil {
         logging.Info("Complete match: \"%s\"", match[0])
-        logging.Info("Matched regex: \"%s\"", match[1])
-        logging.Info("Matched replacement: \"%s\"", match[2])
-        logging.Info("Matched flags: \"%s\"", match[3])
+        logging.Info("Matched user: \"%s\"", match[1])
+        logging.Info("Matched regex: \"%s\"", match[2])
+        logging.Info("Matched replacement: \"%s\"", match[3])
+        logging.Info("Matched flags: \"%s\"", match[4])
     }
 
     if match != nil {
-        replacement_regex := match[1]
-        repl := match[2]
-        flags := match[3]
+        user := match[1]
+        replacement_regex := match[2]
+        repl := match[3]
+        flags := match[4]
         global := false
 
         // Replacement must be given
         if replacement_regex == "" {
             return
-        } 
+        }
+
+        // Default to current user
+        if (user == "") {
+            user = line.Nick
+        }
 
         // Replace escaped slashes with real ones
         replacement_regex = strings.Replace(replacement_regex, "\\/", "/", -1)
@@ -138,7 +150,7 @@ func privmsg(conn *irc.Conn, line *irc.Line) {
         }
 
         // User's last message
-        m, ok := last_message[line.Nick]
+        m, ok := last_message[user]
         if !ok {
             return
         }
@@ -172,10 +184,10 @@ func privmsg(conn *irc.Conn, line *irc.Line) {
         }
 
         // Send out replaced message
-        conn.Privmsg(channel, fmt.Sprintf("<%s>: %s", line.Nick, fixed))
+        conn.Privmsg(channel, fmt.Sprintf("<%s>: %s", user, fixed))
 
         // Consider this corrected message the user's last message
-        last_message[line.Nick] = fixed
+        last_message[user] = fixed
     } else {
         // Not a replacement, just remember this message
         last_message[line.Nick] = message
@@ -186,7 +198,9 @@ func privmsg(conn *irc.Conn, line *irc.Line) {
         } else if strings.EqualFold(message, BOT_NICK + ": help") {
             conn.Privmsg(channel, fmt.Sprintf("%s: I will search and replace your last message when you " +
                 "use the format s/regex/replacement/flags (don't direct at me). " +
-                "Flags are i (ignore case) and g (global replacement).  See source for more details.", line.Nick))
+                "Flags are i (ignore case) and g (global replacement).  " +
+                "Replacements directed at a user will replace their last message.  " +
+                "See source for more details.", line.Nick))
         }
     }
 }
