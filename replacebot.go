@@ -1,5 +1,6 @@
 package main
 
+import "flag"
 import "fmt"
 import "regexp"
 import "strings"
@@ -7,12 +8,13 @@ import irc "github.com/fluffle/goirc/client"
 import "log"
 
 const (
-	BOT_NICK = "replacebot"
-	//BOT_SERVER = "art1.mae.ncsu.edu:6667"
-	//BOT_CHANNEL = "#arc"
-	BOT_SERVER  = "chat.freenode.net:6667"
-	BOT_CHANNEL = "#ncsulug"
-	BOT_SOURCE  = "https://github.com/prattmic/replacebot"
+	BOT_SOURCE = "https://github.com/prattmic/replacebot"
+)
+
+var (
+	nick    = flag.String("nick", "replacebot", "Nick of bot")
+	server  = flag.String("server", "chat.freenode.net:6667", "Server (and port) to connect to")
+	channel = flag.String("channel", "#ncsulug", "Channel to join")
 )
 
 var last_message map[string]string
@@ -52,16 +54,18 @@ var search *regexp.Regexp = regexp.MustCompile(
 		`)?`)
 
 func main() {
+	flag.Parse()
+
 	last_message = make(map[string]string)
 
-	c := irc.SimpleClient(BOT_NICK)
+	c := irc.SimpleClient(*nick)
 
 	// Add handlers to do things here!
 	// e.g. join a channel on connect.
 	c.HandleFunc("connected",
 		func(conn *irc.Conn, line *irc.Line) {
 			log.Printf("Connected to %s as %s", c.Config().Server, c.Config().Me.Nick)
-			conn.Join(BOT_CHANNEL)
+			conn.Join(*channel)
 		})
 
 	// And a signal on disconnect
@@ -76,7 +80,7 @@ func main() {
 	c.HandleFunc("PRIVMSG", privmsg)
 
 	// Tell client to connect.
-	if err := c.ConnectTo(BOT_SERVER); err != nil {
+	if err := c.ConnectTo(*server); err != nil {
 		fmt.Printf("Connection error: %s\n", err)
 		return
 	}
@@ -179,9 +183,9 @@ func privmsg(conn *irc.Conn, line *irc.Line) {
 		last_message[line.Nick] = message
 
 		// Send source link
-		if strings.EqualFold(message, BOT_NICK+": source") {
+		if strings.EqualFold(message, *nick+": source") {
 			conn.Privmsg(channel, fmt.Sprintf("%s: "+BOT_SOURCE, line.Nick))
-		} else if strings.EqualFold(message, BOT_NICK+": help") {
+		} else if strings.EqualFold(message, *nick+": help") {
 			conn.Privmsg(channel, fmt.Sprintf("%s: I will search and replace your last message when you "+
 				"use the format s/regex/replacement/flags (don't direct at me). "+
 				"Flags are i (ignore case) and g (global replacement).  "+
