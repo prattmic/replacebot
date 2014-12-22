@@ -20,14 +20,7 @@ var last_message map[string]string
 func main() {
     last_message = make(map[string]string)
 
-    // Create a config and fiddle with it first:
-    cfg := irc.NewConfig(BOT_NICK)
-
-    //cfg.SSL = true
-    cfg.Server = BOT_SERVER
-
-    cfg.NewNick = func(n string) string { return n + "^" }
-    c := irc.Client(cfg)
+    c := irc.SimpleClient(BOT_NICK)
 
     // Add handlers to do things here!
     // e.g. join a channel on connect.
@@ -49,7 +42,7 @@ func main() {
     c.HandleFunc("PRIVMSG", privmsg)
 
     // Tell client to connect.
-    if err := c.Connect(); err != nil {
+    if err := c.ConnectTo(BOT_SERVER); err != nil {
         fmt.Printf("Connection error: %s\n", err)
         return
     }
