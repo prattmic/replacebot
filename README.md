@@ -24,12 +24,6 @@ Conversations will go something like this:
 
 Building
 ---------------
-replacebot uses the [goirc](https://github.com/fluffle/goirc) IRC framework, however it currently tracks the master branch, which is incomptible with the go1 branch that `go get` will fetch.
+replacebot should build like a standard go application, within your `GOPATH`.
 
-I recommend creating a src/github.com/fluffle/ folder in the replacebot directory, and cloning goirc there.  Then you can set your GOPATH to include the current directory, so the package will be found when you build.
-
-    export GOPATH=$(pwd):$GOPATH
-
-replacebot is also dependent upon [golog](https://github.com/fluffle/goirc), which is in turn dependent on [goevent](https://github.com/fluffle/goevent), however, the go1 branch of these works fine, so you should be able to `go get` them no problem.
-
-The bot nick, server, and channel are specified as constants at the top of replacebot.go.  Modify them to your liking.  Joining multiple channels is not currently supported, but should be trivial to add.  Simply add multiple Join calls in the "connected" function handler.
+    go get github.com/prattmic/replacebot
