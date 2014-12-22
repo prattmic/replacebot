@@ -4,7 +4,7 @@ import "fmt"
 import "regexp"
 import "strings"
 import irc "github.com/fluffle/goirc/client"
-import "github.com/fluffle/golog/logging"
+import "log"
 
 const (
     BOT_NICK = "replacebot"
@@ -33,7 +33,7 @@ func main() {
     // e.g. join a channel on connect.
     c.HandleFunc("connected",
         func(conn *irc.Conn, line *irc.Line) {
-            logging.Info("Connected to %s as %s", cfg.Server, cfg.Me.Nick);
+            log.Printf("Connected to %s as %s", c.Config().Server, c.Config().Me.Nick)
             conn.Join(BOT_CHANNEL)
         })
 
@@ -41,7 +41,7 @@ func main() {
     quit := make(chan bool)
     c.HandleFunc("disconnected",
         func(conn *irc.Conn, line *irc.Line) { 
-            logging.Info("Disconnected");
+            log.Print("Disconnected")
             quit <- true
         })
 
@@ -65,7 +65,7 @@ func privmsg(conn *irc.Conn, line *irc.Line) {
     channel := line.Args[0]
     message := strings.Join(line.Args[1:], "")
 
-    logging.Info("%s to %s: %s", line.Nick, channel, message);
+    log.Printf("%s to %s: %s", line.Nick, channel, message)
 
     /* Yay! Regex!
      * Regex for matching {vim,perl,sed}-style replacement lines.
@@ -102,20 +102,20 @@ func privmsg(conn *irc.Conn, line *irc.Line) {
                                 ")?") // End optional group for (/replacement/flags)
 
     if err != nil {
-        logging.Warn("Regexp compile error: %s", err)
+        log.Printf("Regexp compile error: %s", err)
     }
 
     match := reg.FindStringSubmatch(message)
     if err != nil {
-        logging.Warn("Regexp error: %s", err)
+        log.Printf("Regexp error: %s", err)
     }
 
     if match != nil {
-        logging.Info("Complete match: \"%s\"", match[0])
-        logging.Info("Matched user: \"%s\"", match[1])
-        logging.Info("Matched regex: \"%s\"", match[2])
-        logging.Info("Matched replacement: \"%s\"", match[3])
-        logging.Info("Matched flags: \"%s\"", match[4])
+        log.Printf("Complete match: \"%s\"", match[0])
+        log.Printf("Matched user: \"%s\"", match[1])
+        log.Printf("Matched regex: \"%s\"", match[2])
+        log.Printf("Matched replacement: \"%s\"", match[3])
+        log.Printf("Matched flags: \"%s\"", match[4])
     }
 
     if match != nil {
